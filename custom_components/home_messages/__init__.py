@@ -175,11 +175,17 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                 data = await request.json()
             elif request.content_type in ("application/x-www-form-urlencoded", "multipart/form-data"):
                 form = await request.post()
+                preview_values = form.getall("dry_run", [])
+                is_preview = len(preview_values) == 1 and preview_values[0] == "true"
                 if any(len(form.getall(k)) != 1 for k in form):
                     raise RequestError("duplicate form fields are not accepted")
                 data = dict(form)
             else:
                 return web.json_response({"error": "use form data or JSON"}, status=415)
+            # A recognized preview stays side-effect free even if another
+            # field is invalid. Never echo raw payloads in rejection reporting.
+            if isinstance(data, dict):
+                is_preview = data.get("dry_run", False) in (True, "true")
             if not isinstance(data, dict) or set(data) - {"text", "initials", "request_id", "dry_run"}:
                 raise RequestError("unsupported request fields")
             dry_run = data.get("dry_run", False)
@@ -206,7 +212,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             return web.json_response({"error": "invalid text, initials, or request ID; nothing sent"}, status=400)
         except ValueError:
             # JSON decoder errors may contain the submitted body; do not expose it.
-            await async_report_preflight_rejection(rt, RequestError("invalid JSON payload; no message sent"))
+            if not is_preview:
+                await async_report_preflight_rejection(rt, RequestError("invalid JSON payload; no message sent"))
             return web.json_response({"error": "invalid text, initials, or request ID; nothing sent"}, status=400)
         except OSError:
             return web.json_response({"error": "message ledger unavailable; no dispatch started"}, status=503)
