@@ -1,0 +1,128 @@
+{
+  "title": "Home Messages",
+  "entity": {
+    "sensor": {
+      "last_delivery": {
+        "name": "Last delivery"
+      }
+    }
+  },
+  "config": {
+    "step": {
+      "user": {
+        "title": "Set up Home Messages",
+        "description": "Configure iMessage and optional Sipgate SMS. Recipients and credentials can be changed later with Configure.",
+        "data": {
+          "proxy_url": "iMessage proxy URL",
+          "proxy_api_key": "iMessage proxy API key",
+          "recipients": "Recipients (one alias=phone number per line)",
+          "sipgate_enabled": "Enable Sipgate SMS fallback",
+          "sipgate_token_id": "Sipgate personal access token ID",
+          "sipgate_token_secret": "Sipgate personal access token secret",
+          "sipgate_sms_id": "Sipgate SMS extension ID",
+          "groups": "Groups (one alias-alias=chat_id:ID per line)"
+        },
+        "data_description": {
+          "proxy_url": "Base URL of the local proxy, including its port. Saving this form does not test connectivity or send a message.",
+          "proxy_api_key": "Required at setup. When editing, leave blank to keep the saved key. Saved keys are never shown.",
+          "recipients": "One ALIAS=+COUNTRYCODEPHONENUMBER mapping per line. Use an international phone number without spaces. Aliases are case insensitive and must be unique. Hyphens are reserved for groups.",
+          "sipgate_enabled": "SMS fallback applies only to individual sends after a definite iMessage failure. Uncertain results and groups never trigger automatic SMS.",
+          "sipgate_token_id": "Required when SMS fallback is enabled. Leave blank when editing to keep the saved value.",
+          "sipgate_token_secret": "Required when SMS fallback is enabled. Leave blank when editing to keep the saved value.",
+          "sipgate_sms_id": "The SMS extension identifier from Sipgate, for example s0; this is not the recipient's phone number.",
+          "groups": "Optional, for example BB-CC=chat_id:42. Use existing iMessage groups with exactly these recipients; alias order does not matter. The chat ID must be allowed by the proxy. This does not create chats. Leave empty for individual sends only."
+        }
+      }
+    },
+    "error": {
+      "invalid_url": "Enter an HTTP or HTTPS base URL with a host, without credentials, query parameters, or a fragment.",
+      "invalid_value": "Enter a valid value.",
+      "required_secret": "Enter the iMessage proxy API key.",
+      "sipgate_required": "This field is required when Sipgate SMS fallback is enabled.",
+      "invalid_recipients": "Use one ALIAS=+internationalnumber per line (7–15 digits). Aliases start with a letter and may contain letters, digits and _ (up to 16 characters).",
+      "duplicate_alias": "Each recipient alias must be unique, including after conversion to uppercase.",
+      "empty_recipients": "Enter at least one recipient.",
+      "alias_hyphen_reserved": "Hyphens are reserved for groups. Explicitly rename any existing recipient alias containing a hyphen and update its callers.",
+      "invalid_groups": "Use ALIAS-ALIAS=chat_id:ID, one group per line. Each group needs at least two aliases and a positive integer chat ID.",
+      "unknown_group_alias": "Every group alias must exist in the recipient mapping.",
+      "duplicate_group_recipient": "Each group must contain distinct aliases with distinct phone numbers.",
+      "duplicate_group": "Map each recipient group only once; a different alias order describes the same group.",
+      "duplicate_group_chat_id": "A chat ID can be mapped to only one recipient group."
+    },
+    "abort": {
+      "already_configured": "Home Messages is already configured. Edit the existing integration with Configure.",
+      "single_instance_allowed": "Only one Home Messages integration can be configured."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Configure Home Messages",
+        "description": "Blank password fields keep their saved values. Changes apply after saving; the webhook address stays the same.\n\nLocal webhook URL (keep private):\n`{webhook_url}`\n\nPOST form fields: `text` and `initials`. `BB,CC` sends individually; `BB-CC` sends to one group. `BB-CC,AA` sends to one group and individually to AA; `BB-CC-AA` sends to a group of three.",
+        "data": {
+          "proxy_url": "iMessage proxy URL",
+          "proxy_api_key": "iMessage proxy API key",
+          "recipients": "Recipients (one alias=phone number per line)",
+          "sipgate_enabled": "Enable Sipgate SMS fallback",
+          "sipgate_token_id": "Sipgate personal access token ID",
+          "sipgate_token_secret": "Sipgate personal access token secret",
+          "sipgate_sms_id": "Sipgate SMS extension ID",
+          "groups": "Groups (one alias-alias=chat_id:ID per line)"
+        },
+        "data_description": {
+          "proxy_url": "Base URL of the local proxy, including its port. Saving this form does not test connectivity or send a message.",
+          "proxy_api_key": "Required at setup. When editing, leave blank to keep the saved key. Saved keys are never shown.",
+          "recipients": "One ALIAS=+COUNTRYCODEPHONENUMBER mapping per line. Use an international phone number without spaces. Aliases are case insensitive and must be unique. Hyphens are reserved for groups.",
+          "sipgate_enabled": "SMS fallback applies only to individual sends after a definite iMessage failure. Uncertain results and groups never trigger automatic SMS.",
+          "sipgate_token_id": "Required when SMS fallback is enabled. Leave blank when editing to keep the saved value.",
+          "sipgate_token_secret": "Required when SMS fallback is enabled. Leave blank when editing to keep the saved value.",
+          "sipgate_sms_id": "The SMS extension identifier from Sipgate, for example s0; this is not the recipient's phone number.",
+          "groups": "Optional, for example BB-CC=chat_id:42. Use existing iMessage groups with exactly these recipients; alias order does not matter. The chat ID must be allowed by the proxy. This does not create chats. Leave empty for individual sends only."
+        }
+      }
+    },
+    "error": {
+      "invalid_url": "Enter an HTTP or HTTPS base URL with a host, without credentials, query parameters, or a fragment.",
+      "invalid_value": "Enter a valid value.",
+      "required_secret": "Enter the iMessage proxy API key.",
+      "sipgate_required": "This field is required when Sipgate SMS fallback is enabled.",
+      "invalid_recipients": "Use one ALIAS=+internationalnumber per line (7–15 digits). Aliases start with a letter and may contain letters, digits and _ (up to 16 characters).",
+      "duplicate_alias": "Each recipient alias must be unique, including after conversion to uppercase.",
+      "empty_recipients": "Enter at least one recipient.",
+      "alias_hyphen_reserved": "Hyphens are reserved for groups. Explicitly rename any existing recipient alias containing a hyphen and update its callers.",
+      "invalid_groups": "Use ALIAS-ALIAS=chat_id:ID, one group per line. Each group needs at least two aliases and a positive integer chat ID.",
+      "unknown_group_alias": "Every group alias must exist in the recipient mapping.",
+      "duplicate_group_recipient": "Each group must contain distinct aliases with distinct phone numbers.",
+      "duplicate_group": "Map each recipient group only once; a different alias order describes the same group.",
+      "duplicate_group_chat_id": "A chat ID can be mapped to only one recipient group."
+    }
+  },
+  "services": {
+    "send": {
+      "name": "Send message",
+      "description": "Send individual targets via iMessage first, with optional Sipgate SMS fallback after a definite failure. Groups use iMessage only.",
+      "fields": {
+        "dry_run": {
+          "name": "Validate only",
+          "description": "Validate the message and configured recipient/group mappings locally without sending. This does not check chat membership or proxy permissions."
+        },
+        "text": {
+          "name": "Message",
+          "description": "The message text to send."
+        },
+        "initials": {
+          "name": "Recipients",
+          "description": "Commas separate targets; hyphens join a configured group: BB,CC individually; BB-CC as one group; BB-CC,AA as one group plus an individual; BB-CC-AA as a group of three."
+        },
+        "request_id": {
+          "name": "Request ID",
+          "description": "Optional unique ID for this message. Reuse an ID only when retrying the same request."
+        }
+      }
+    },
+    "test_connection": {
+      "name": "Test connection",
+      "description": "Read the iMessage proxy status without sending a message or SMS."
+    }
+  }
+}

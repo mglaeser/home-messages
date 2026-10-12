@@ -1,0 +1,55 @@
+name: Bug report
+description: Report a reproducible Home Messages problem.
+title: "[Bug] "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Do not include tokens, webhook URLs, phone numbers, chat IDs or private messages.
+        Report security vulnerabilities privately as described in SECURITY.md.
+  - type: input
+    id: versions
+    attributes:
+      label: Versions
+      description: Home Assistant, Home Messages and iMessage Proxy versions.
+      placeholder: "HA 2026.9.1; Home Messages 1.1.1; proxy 1.0-compatible"
+    validations:
+      required: true
+  - type: dropdown
+    id: target
+    attributes:
+      label: Affected target
+      options:
+        - Individual iMessage
+        - Group iMessage
+        - Sipgate fallback
+        - Configuration or another feature
+    validations:
+      required: true
+  - type: textarea
+    id: problem
+    attributes:
+      label: Expected and actual behavior
+      description: Include result state and reason if available, using synthetic data.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Steps to reproduce
+      description: Provide a minimal example. No real test send is required.
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Redacted diagnostics or logs
+      description: Review all content first; HA traces can contain message text and secrets.
+      render: text
+  - type: checkboxes
+    id: privacy
+    attributes:
+      label: Before submitting
+      options:
+        - label: I removed credentials, destination identifiers and private message content.
+          required: true

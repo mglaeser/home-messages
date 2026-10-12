@@ -1,0 +1,61 @@
+name: Tests
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tests-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  routing:
+    name: Offline routing and transport
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.14"
+          cache: pip
+          cache-dependency-path: requirements_test.txt
+      - run: python -m pip install -r requirements_test.txt
+      - run: >-
+          python -m pytest -q
+          tests/test_home_messages_delivery.py
+          tests/test_home_messages_transport.py
+          tests/test_home_messages_group_config.py
+
+  home-assistant:
+    name: Home Assistant ${{ matrix.ha }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - ha: "2026.9.1"
+            requirements: requirements_test_ha_min.txt
+          - ha: "2026.10.1"
+            requirements: requirements_test_ha.txt
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.14"
+          cache: pip
+          cache-dependency-path: ${{ matrix.requirements }}
+      - name: Install matching HA test fixtures
+        env:
+          REQUIREMENTS: ${{ matrix.requirements }}
+        run: python -m pip install -r "$REQUIREMENTS"
+      - run: python -m pytest -q tests/ha

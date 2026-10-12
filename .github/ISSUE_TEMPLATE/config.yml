@@ -1,0 +1,11 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Setup and troubleshooting
+    url: https://github.com/mglaeser/home-messages/blob/main/SUPPORT.md
+    about: Read the setup guide and common checks before opening an issue.
+  - name: Security vulnerability
+    url: https://github.com/mglaeser/home-messages/blob/main/SECURITY.md
+    about: Follow the private reporting instructions; do not disclose vulnerabilities publicly.
+  - name: iMessage Proxy documentation
+    url: https://github.com/mglaeser/imessage-proxy
+    about: The separate macOS service has its own installation and API documentation.

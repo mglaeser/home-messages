@@ -1,0 +1,128 @@
+{
+  "title": "Home Messages",
+  "entity": {
+    "sensor": {
+      "last_delivery": {
+        "name": "Letzter Versand"
+      }
+    }
+  },
+  "config": {
+    "step": {
+      "user": {
+        "title": "Home Messages einrichten",
+        "description": "iMessage und optional Sipgate-SMS konfigurieren. Empfänger und Zugangsdaten können später über „Konfigurieren“ geändert werden.",
+        "data": {
+          "proxy_url": "URL des iMessage-Proxys",
+          "proxy_api_key": "API-Schlüssel des iMessage-Proxys",
+          "recipients": "Empfänger (ein Kürzel=Telefonnummer pro Zeile)",
+          "sipgate_enabled": "Sipgate-SMS als Ersatz aktivieren",
+          "sipgate_token_id": "ID des persönlichen Sipgate-Zugriffstokens",
+          "sipgate_token_secret": "Geheimnis des persönlichen Sipgate-Zugriffstokens",
+          "sipgate_sms_id": "ID des Sipgate-SMS-Anschlusses",
+          "groups": "Gruppen (ein Kürzel-Kürzel=chat_id:ID pro Zeile)"
+        },
+        "data_description": {
+          "proxy_url": "Basis-URL des lokalen Proxys einschließlich Port. Das Speichern prüft keine Verbindung und versendet keine Nachricht.",
+          "proxy_api_key": "Bei der Einrichtung erforderlich. Beim Bearbeiten leer lassen, um den gespeicherten Schlüssel beizubehalten. Gespeicherte Schlüssel werden nie angezeigt.",
+          "recipients": "Eine Zuordnung pro Zeile: KÜRZEL=+LÄNDERVORWAHLRUFNUMMER. Internationale Telefonnummer ohne Leerzeichen verwenden. Kürzel werden in Großbuchstaben vereinheitlicht und müssen eindeutig sein. Bindestriche sind für Gruppen reserviert.",
+          "sipgate_enabled": "SMS als Ersatz gilt nur für Einzelversand bei einem eindeutigen iMessage-Fehler. Unklarer Versandstatus und Gruppen lösen keine automatische SMS aus.",
+          "sipgate_token_id": "Erforderlich, wenn SMS als Ersatz aktiviert ist. Beim Bearbeiten leer lassen, um den gespeicherten Wert beizubehalten.",
+          "sipgate_token_secret": "Erforderlich, wenn SMS als Ersatz aktiviert ist. Beim Bearbeiten leer lassen, um den gespeicherten Wert beizubehalten.",
+          "sipgate_sms_id": "Die Kennung des SMS-Anschlusses bei Sipgate, beispielsweise s0; dies ist nicht die Telefonnummer des Empfängers.",
+          "groups": "Optional: beispielsweise BB-CC=chat_id:42. Nur vorhandene iMessage-Gruppen mit genau den angegebenen Empfängern verwenden; die Reihenfolge der Kürzel ist egal. Die Chat-ID muss im Proxy freigegeben sein. Hier werden keine Chats angelegt. Leer lassen, wenn nur Einzelversand benötigt wird."
+        }
+      }
+    },
+    "error": {
+      "invalid_url": "Eine HTTP- oder HTTPS-Basis-URL mit Host eingeben, ohne Zugangsdaten, Abfrageparameter oder Fragment.",
+      "invalid_value": "Einen gültigen Wert eingeben.",
+      "required_secret": "Den API-Schlüssel des iMessage-Proxys eingeben.",
+      "sipgate_required": "Dieses Feld ist erforderlich, wenn Sipgate-SMS als Ersatz aktiviert ist.",
+      "invalid_recipients": "Pro Zeile KÜRZEL=+internationaleNummer eingeben (7–15 Ziffern). Kürzel beginnen mit einem Buchstaben und dürfen Buchstaben, Ziffern und _ enthalten (maximal 16 Zeichen).",
+      "duplicate_alias": "Jedes Empfängerkürzel muss eindeutig sein, auch nach der Umwandlung in Großbuchstaben.",
+      "empty_recipients": "Mindestens einen Empfänger eingeben.",
+      "alias_hyphen_reserved": "Bindestriche sind für Gruppen reserviert. Vorhandene Empfängerkürzel mit Bindestrich müssen ausdrücklich umbenannt und ihre Aufrufe angepasst werden.",
+      "invalid_groups": "Pro Zeile KÜRZEL-KÜRZEL=chat_id:ID eingeben. Jede Gruppe braucht mindestens zwei Kürzel und eine positive ganzzahlige Chat-ID.",
+      "unknown_group_alias": "Alle Kürzel einer Gruppe müssen in der Empfängerzuordnung stehen.",
+      "duplicate_group_recipient": "Jede Gruppe muss verschiedene Kürzel mit verschiedenen Telefonnummern enthalten.",
+      "duplicate_group": "Jede Empfängergruppe darf nur einmal zugeordnet werden; eine andere Reihenfolge der Kürzel ist dieselbe Gruppe.",
+      "duplicate_group_chat_id": "Eine Chat-ID darf nur einer Empfängergruppe zugeordnet werden."
+    },
+    "abort": {
+      "already_configured": "Home Messages ist bereits eingerichtet. Die vorhandene Integration über „Konfigurieren“ bearbeiten.",
+      "single_instance_allowed": "Es kann nur eine Home-Messages-Integration eingerichtet werden."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Home Messages konfigurieren",
+        "description": "Leere Passwortfelder behalten die gespeicherten Werte bei. Änderungen werden nach dem Speichern übernommen; die Webhook-Adresse bleibt gleich.\n\nLokale Webhook-URL (vertraulich behandeln):\n`{webhook_url}`\n\nPOST-Formularfelder: `text` und `initials`. `BB,CC` versendet einzeln, `BB-CC` an eine Gruppe. `BB-CC,AA` versendet an eine Gruppe und einzeln an AA; `BB-CC-AA` an eine Dreiergruppe.",
+        "data": {
+          "proxy_url": "URL des iMessage-Proxys",
+          "proxy_api_key": "API-Schlüssel des iMessage-Proxys",
+          "recipients": "Empfänger (ein Kürzel=Telefonnummer pro Zeile)",
+          "sipgate_enabled": "Sipgate-SMS als Ersatz aktivieren",
+          "sipgate_token_id": "ID des persönlichen Sipgate-Zugriffstokens",
+          "sipgate_token_secret": "Geheimnis des persönlichen Sipgate-Zugriffstokens",
+          "sipgate_sms_id": "ID des Sipgate-SMS-Anschlusses",
+          "groups": "Gruppen (ein Kürzel-Kürzel=chat_id:ID pro Zeile)"
+        },
+        "data_description": {
+          "proxy_url": "Basis-URL des lokalen Proxys einschließlich Port. Das Speichern prüft keine Verbindung und versendet keine Nachricht.",
+          "proxy_api_key": "Bei der Einrichtung erforderlich. Beim Bearbeiten leer lassen, um den gespeicherten Schlüssel beizubehalten. Gespeicherte Schlüssel werden nie angezeigt.",
+          "recipients": "Eine Zuordnung pro Zeile: KÜRZEL=+LÄNDERVORWAHLRUFNUMMER. Internationale Telefonnummer ohne Leerzeichen verwenden. Kürzel werden in Großbuchstaben vereinheitlicht und müssen eindeutig sein. Bindestriche sind für Gruppen reserviert.",
+          "sipgate_enabled": "SMS als Ersatz gilt nur für Einzelversand bei einem eindeutigen iMessage-Fehler. Unklarer Versandstatus und Gruppen lösen keine automatische SMS aus.",
+          "sipgate_token_id": "Erforderlich, wenn SMS als Ersatz aktiviert ist. Beim Bearbeiten leer lassen, um den gespeicherten Wert beizubehalten.",
+          "sipgate_token_secret": "Erforderlich, wenn SMS als Ersatz aktiviert ist. Beim Bearbeiten leer lassen, um den gespeicherten Wert beizubehalten.",
+          "sipgate_sms_id": "Die Kennung des SMS-Anschlusses bei Sipgate, beispielsweise s0; dies ist nicht die Telefonnummer des Empfängers.",
+          "groups": "Optional: beispielsweise BB-CC=chat_id:42. Nur vorhandene iMessage-Gruppen mit genau den angegebenen Empfängern verwenden; die Reihenfolge der Kürzel ist egal. Die Chat-ID muss im Proxy freigegeben sein. Hier werden keine Chats angelegt. Leer lassen, wenn nur Einzelversand benötigt wird."
+        }
+      }
+    },
+    "error": {
+      "invalid_url": "Eine HTTP- oder HTTPS-Basis-URL mit Host eingeben, ohne Zugangsdaten, Abfrageparameter oder Fragment.",
+      "invalid_value": "Einen gültigen Wert eingeben.",
+      "required_secret": "Den API-Schlüssel des iMessage-Proxys eingeben.",
+      "sipgate_required": "Dieses Feld ist erforderlich, wenn Sipgate-SMS als Ersatz aktiviert ist.",
+      "invalid_recipients": "Pro Zeile KÜRZEL=+internationaleNummer eingeben (7–15 Ziffern). Kürzel beginnen mit einem Buchstaben und dürfen Buchstaben, Ziffern und _ enthalten (maximal 16 Zeichen).",
+      "duplicate_alias": "Jedes Empfängerkürzel muss eindeutig sein, auch nach der Umwandlung in Großbuchstaben.",
+      "empty_recipients": "Mindestens einen Empfänger eingeben.",
+      "alias_hyphen_reserved": "Bindestriche sind für Gruppen reserviert. Vorhandene Empfängerkürzel mit Bindestrich müssen ausdrücklich umbenannt und ihre Aufrufe angepasst werden.",
+      "invalid_groups": "Pro Zeile KÜRZEL-KÜRZEL=chat_id:ID eingeben. Jede Gruppe braucht mindestens zwei Kürzel und eine positive ganzzahlige Chat-ID.",
+      "unknown_group_alias": "Alle Kürzel einer Gruppe müssen in der Empfängerzuordnung stehen.",
+      "duplicate_group_recipient": "Jede Gruppe muss verschiedene Kürzel mit verschiedenen Telefonnummern enthalten.",
+      "duplicate_group": "Jede Empfängergruppe darf nur einmal zugeordnet werden; eine andere Reihenfolge der Kürzel ist dieselbe Gruppe.",
+      "duplicate_group_chat_id": "Eine Chat-ID darf nur einer Empfängergruppe zugeordnet werden."
+    }
+  },
+  "services": {
+    "send": {
+      "name": "Nachricht senden",
+      "description": "Einzelziele zuerst per iMessage senden, optional mit Sipgate-SMS als Ersatz bei eindeutigem Fehler. Gruppen werden ausschließlich per iMessage versendet.",
+      "fields": {
+        "dry_run": {
+          "name": "Nur prüfen",
+          "description": "Nachricht und konfigurierte Empfänger- sowie Gruppenzuordnungen lokal prüfen, ohne etwas zu versenden. Prüft weder Chat-Mitglieder noch Proxy-Freigaben."
+        },
+        "text": {
+          "name": "Nachricht",
+          "description": "Der zu versendende Nachrichtentext."
+        },
+        "initials": {
+          "name": "Empfänger",
+          "description": "Komma trennt Versandziele, Bindestrich bildet eine konfigurierte Gruppe: BB,CC einzeln; BB-CC als Gruppe; BB-CC,AA als Gruppe plus Einzelversand; BB-CC-AA als Dreiergruppe."
+        },
+        "request_id": {
+          "name": "Anfrage-ID",
+          "description": "Optionale eindeutige ID dieser Nachricht. Dieselbe ID nur für einen erneuten Versuch derselben Anfrage verwenden."
+        }
+      }
+    },
+    "test_connection": {
+      "name": "Verbindung prüfen",
+      "description": "Den Status des iMessage-Proxys abrufen, ohne eine Nachricht oder SMS zu senden."
+    }
+  }
+}

@@ -1,0 +1,36 @@
+send:
+  name: Send message
+  description: Send individual targets via iMessage first, with optional Sipgate SMS fallback after a definite failure. Groups use iMessage only.
+  fields:
+    text:
+      name: Message
+      description: Message text to send.
+      required: true
+      example: The washing machine has finished.
+      selector:
+        text:
+          multiline: true
+    initials:
+      name: Recipients
+      description: Commas separate targets; hyphens join a configured group. BB,CC sends individually; BB-CC sends to one group; BB-CC,AA sends to one group and individually to AA; BB-CC-AA sends to a group of three.
+      required: true
+      example: BB-CC,AA
+      selector:
+        text:
+    request_id:
+      name: Request ID
+      description: Optional unique ID for this message. Reuse the same ID only when retrying the same request.
+      required: false
+      example: washing-machine-20261002-180000
+      selector:
+        text:
+    dry_run:
+      name: Validate only
+      description: Validate the message and configured recipient/group mappings locally without sending. This does not check chat membership or proxy permissions.
+      required: false
+      default: false
+      selector:
+        boolean:
+test_connection:
+  name: Test connection
+  description: Read the iMessage proxy status without sending a message or SMS.

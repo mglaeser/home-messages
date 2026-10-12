@@ -1,0 +1,15 @@
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+.venv*/
+dist/
+*.egg-info/
+.DS_Store
+# Home Assistant private state never belongs in this repository.
+.storage/
+secrets.yaml
+home-assistant.log*
+home-assistant_v2.db*

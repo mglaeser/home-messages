@@ -1,0 +1,57 @@
+name: Release package
+
+# Build an inspectable package from a version tag. Publishing a GitHub release
+# remains an explicit maintainer action; this workflow has no repository writes.
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  package:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.14"
+      - run: python -m pip install -r requirements_test.txt
+      - run: >-
+          python -m pytest -q
+          tests/test_home_messages_delivery.py
+          tests/test_home_messages_transport.py
+          tests/test_home_messages_group_config.py
+      - name: Verify version and build source package
+        env:
+          RELEASE_REF: ${{ github.ref }}
+        run: |
+          python - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+          from zipfile import ZIP_DEFLATED, ZipFile
+
+          component = Path("custom_components/home_messages")
+          version = json.loads((component / "manifest.json").read_text())["version"]
+          ref = os.environ["RELEASE_REF"]
+          if ref.startswith("refs/tags/") and ref != f"refs/tags/v{version}":
+              raise SystemExit("Tag must match the integration manifest version")
+          Path("dist").mkdir(exist_ok=True)
+          with ZipFile(f"dist/home-messages-{version}.zip", "w", ZIP_DEFLATED) as archive:
+              for path in sorted(component.rglob("*")):
+                  if path.is_file() and path.suffix in {".py", ".json", ".yaml", ".png", ".svg"}:
+                      archive.write(path)
+              for name in ("README.md", "LICENSE"):
+                  archive.write(name)
+          PY
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: home-messages-source
+          path: dist/*.zip
+          if-no-files-found: error

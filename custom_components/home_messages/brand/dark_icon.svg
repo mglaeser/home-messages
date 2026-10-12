@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256" fill="none">
+  <title>Home Messages</title>
+  <desc>A white house with a mint message bubble on a teal rounded square.</desc>
+  <defs><linearGradient id="tile" x1="38" y1="20" x2="222" y2="241" gradientUnits="userSpaceOnUse"><stop stop-color="#20C6A3"/><stop offset="1" stop-color="#078893"/></linearGradient></defs>
+  <rect x="12" y="12" width="232" height="232" rx="59" fill="url(#tile)"/>
+  <rect x="12.75" y="12.75" width="230.5" height="230.5" rx="58.25" stroke="white" stroke-opacity=".15" stroke-width="1.5"/>
+  <path d="m58 115 60-51 60 51" fill="none" stroke="white" stroke-width="15" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M74 111v60a13 13 0 0 0 13 13h64a13 13 0 0 0 13-13v-60l-46-39z" fill="white"/>
+    <rect x="104" y="133" width="28" height="51" rx="6" fill="#078A87"/>
+    <path d="M152 135h39a19 19 0 0 1 19 19v23a19 19 0 0 1-19 19h-20l-20 15v-17a19 19 0 0 1-18-19v-21a19 19 0 0 1 19-19z" fill="#B8F9E6" stroke="#078A87" stroke-width="5" stroke-linejoin="round"/>
+    <path d="M152 157h39M152 173h25" stroke="#057D80" stroke-width="7" stroke-linecap="round"/>
+</svg>

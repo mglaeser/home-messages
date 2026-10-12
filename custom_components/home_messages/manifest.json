@@ -1,0 +1,20 @@
+{
+  "domain": "home_messages",
+  "name": "Home Messages",
+  "codeowners": [
+    "@mglaeser"
+  ],
+  "config_flow": true,
+  "dependencies": [
+    "persistent_notification",
+    "webhook"
+  ],
+  "documentation": "https://github.com/mglaeser/home-messages",
+  "integration_type": "service",
+  "iot_class": "local_push",
+  "issue_tracker": "https://github.com/mglaeser/home-messages/issues",
+  "loggers": [],
+  "requirements": [],
+  "single_config_entry": true,
+  "version": "1.1.1"
+}
