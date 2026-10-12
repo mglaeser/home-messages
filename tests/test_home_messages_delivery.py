@@ -218,8 +218,8 @@ def test_group_reordering_and_duplicates_are_canonical():
                                  "phones": ["+12025550101", "+12025550102"]}]
 
 
-@pytest.mark.parametrize("initials", ["BB-", "-BB", "BB--CC", "BB-BB", "BB-CC-ZZ", "BB/CC", "BB CC", "BB-CC,", "AA-CC"])
-def test_invalid_or_unconfigured_groups(initials):
+@pytest.mark.parametrize("initials", ["BB-", "-BB", "BB--CC", "BB-BB", "BB-CC-ZZ", "BB/CC", "BB CC", "BB-CC,"])
+def test_invalid_group_syntax_and_unknown_members(initials):
     with pytest.raises(d.RequestError):
         d.prepare(GROUP_CFG, "test", initials)
 
@@ -388,3 +388,171 @@ async def test_restart_of_reserved_group_never_reads_or_resubmits():
     result = restored.result(key)["results"][0]
     assert result["target_type"] == "group" and result["state"] == "unknown"
     assert not t2.calls and not t2.reads
+
+
+@pytest.mark.parametrize("group_settings", [{}, {"groups": {}}, {"groups": {"AA-BB": 44}}])
+@pytest.mark.parametrize("hyphens,commas", [
+    ("BB-CC", "BB,CC"),
+    (" cc - bb ", "CC,BB"),
+    ("CC-AA-BB", "CC,AA,BB"),
+    ("BB-CC,CC-BB,BB", "BB,CC,CC,BB,BB"),
+    ("AA-CC,BB-CC,AA", "AA,CC,BB,CC,AA"),
+])
+def test_unmapped_groups_resolve_like_explicit_individuals(group_settings, hyphens, commas):
+    cfg = {**CFG, "recipients": deepcopy(GROUP_CFG["recipients"]), **group_settings}
+    assert d.prepare(cfg, "Same message", hyphens) == d.prepare(cfg, "Same message", commas)
+
+
+@pytest.mark.parametrize("initials,expected_aliases", [
+    ("BB-CC,BB", ["BB", "CC"]),
+    ("CC-BB,CC", ["CC", "BB"]),
+])
+def test_unmapped_group_deduplicates_shared_phone_like_comma_input(initials, expected_aliases):
+    cfg = deepcopy(CFG)
+    cfg["recipients"]["CC"] = cfg["recipients"]["BB"]
+    plan = d.prepare(cfg, "One recipient", initials)
+    assert plan == d.prepare(cfg, "One recipient", initials.replace("-", ","))
+    assert plan["targets"] == [{"phone": "+12025550101", "initials": expected_aliases}]
+
+
+@pytest.mark.asyncio
+async def test_unmapped_group_and_comma_request_share_durable_replay():
+    m, t, saves = manager([{"state": "accepted", "transport": "imessage"}] * 2)
+    plan = d.prepare(CFG, "Private unmapped text", "CC-BB,BB")
+    key, fresh = await m.reserve(plan, "unmapped-replay-123")
+    assert fresh and not t.calls
+    first = await m.execute(key, plan)
+    assert first["complete"] and all(r["state"] == "accepted" for r in first["results"])
+    assert [(r["target_type"], r["target"]) for r in first["results"]] == [
+        ("single", "BB"), ("single", "CC"),
+    ]
+    assert [(c[0], c[1], c[2]) for c in t.calls] == [
+        ("imessage", "+12025550101", "Private unmapped text"),
+        ("imessage", "+12025550102", "Private unmapped text"),
+    ]
+    assert t.calls[0][3] != t.calls[1][3] and not t.reads
+    assert await m.reserve(
+        d.prepare(CFG, "Private unmapped text", "BB,CC"), "unmapped-replay-123"
+    ) == (key, False)
+    assert m.result(key) == first and len(t.calls) == 2
+    assert "Private unmapped text" not in str(saves) and "+1202" not in str(saves)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("initially_configured", [False, True])
+async def test_changing_group_binding_cannot_repeat_an_uncertain_request(initially_configured):
+    cfg = deepcopy(GROUP_CFG)
+    if not initially_configured:
+        cfg["groups"].pop("BB-CC")
+    m, t, _ = manager([{"state": "unknown", "transport": "imessage"}] * 2)
+    plan = d.prepare(cfg, "Potentially submitted", "BB-CC")
+    key, _ = await m.reserve(plan, "binding-change-123")
+    first = await m.execute(key, plan)
+    assert all(r["state"] == "unknown" for r in first["results"])
+    calls, reads = list(t.calls), list(t.reads)
+    records = deepcopy(m.records)
+    if initially_configured:
+        cfg["groups"].pop("BB-CC")
+    else:
+        cfg["groups"]["BB-CC"] = 42
+    with pytest.raises(d.RequestConflict):
+        await m.reserve(d.prepare(cfg, "Potentially submitted", "BB-CC"), "binding-change-123")
+    assert m.records == records and t.calls == calls and t.reads == reads
+
+
+@pytest.mark.asyncio
+async def test_unmapped_group_plan_keeps_its_recipient_snapshot_until_dispatch():
+    cfg = deepcopy(GROUP_CFG)
+    cfg["groups"] = {}
+    m, t, _ = manager([{"state": "accepted", "transport": "imessage"}] * 2)
+    plan = d.prepare(cfg, "Snapshot", "BB-CC")
+    key, _ = await m.reserve(plan)
+    cfg["groups"]["BB-CC"] = 42
+    cfg["recipients"]["BB"] = "+12025550109"
+    await m.execute(key, plan)
+    assert [(c[0], c[1]) for c in t.calls] == [
+        ("imessage", "+12025550101"), ("imessage", "+12025550102"),
+    ]
+    assert not t.reads
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("valid_metadata", [False, True])
+async def test_mixed_unmapped_and_configured_groups_keep_group_preflight(valid_metadata):
+    chats = deepcopy(CHATS)
+    if not valid_metadata:
+        chats[44]["participants"].append("+12025550109")
+    m, t, _ = manager([{"state": "accepted", "transport": "imessage"}] * 3, chats=chats)
+    # AA-CC has no binding; AA-BB is still a group. AA is explicitly in both.
+    plan = d.prepare(GROUP_CFG, "Mixed audience", "AA-CC,AA-BB,AA,CC")
+    key, _ = await m.reserve(plan)
+    result = await m.execute(key, plan)
+    assert [(r["target_type"], r["target"]) for r in result["results"]] == [
+        ("single", "CC"), ("single", "AA"), ("group", "AA-BB"),
+    ]
+    assert t.reads == [44] and result["complete"]
+    if valid_metadata:
+        assert [(c[0], c[1]) for c in t.calls] == [
+            ("imessage", "+12025550102"), ("imessage", "+12025550103"),
+            ("imessage_group", 44),
+        ]
+        assert all(r["state"] == "accepted" for r in result["results"])
+    else:
+        assert not t.calls
+        assert all(r["state"] == "rejected" for r in result["results"])
+        assert all(r["reason"] == "group_chat_verification_failed" for r in result["results"])
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("state,sipgate_enabled,expect_sms", [
+    ("unavailable", True, True),
+    ("unavailable", False, False),
+    ("unknown", True, False),
+    ("rejected", True, False),
+])
+async def test_unmapped_group_uses_only_normal_individual_sms_rules(state, sipgate_enabled, expect_sms):
+    cfg = {**CFG, "sipgate_enabled": sipgate_enabled}
+    m, t, _ = manager([
+        {"state": state, "transport": "imessage", "reason": "connection_failed"},
+        {"state": "accepted", "transport": "imessage"},
+    ])
+    plan = d.prepare(cfg, "Individual fallback", "BB-CC")
+    key, _ = await m.reserve(plan)
+    result = await m.execute(key, plan)
+    expected_calls = [("imessage", "+12025550101")]
+    if expect_sms:
+        expected_calls.append(("sms", "+12025550101"))
+    expected_calls.append(("imessage", "+12025550102"))
+    assert [(c[0], c[1]) for c in t.calls] == expected_calls
+    assert result["results"][0]["state"] == ("accepted" if expect_sms else state)
+    assert all(r["target_type"] == "single" for r in result["results"]) and not t.reads
+
+
+@pytest.mark.asyncio
+async def test_restart_of_unmapped_group_does_not_retry_individuals():
+    m, t, _ = manager([])
+    plan = d.prepare(CFG, "Interrupted", "BB-CC")
+    key, _ = await m.reserve(plan, "unmapped-restart-123")
+    restored, t2, _ = manager([], deepcopy(m.records))
+    await restored.recover()
+    assert await restored.reserve(
+        d.prepare(CFG, "Interrupted", "BB,CC"), "unmapped-restart-123"
+    ) == (key, False)
+    assert all(r["target_type"] == "single" and r["state"] == "unknown"
+               for r in restored.result(key)["results"])
+    assert not t.calls and not t.reads and not t2.calls and not t2.reads
+
+
+@pytest.mark.asyncio
+async def test_configured_group_transport_exception_does_not_fan_out(monkeypatch):
+    m, t, _ = manager([])
+    async def ambiguous_send(cfg, chat_id, text, key):
+        t.calls.append(("imessage_group", chat_id, text, key))
+        raise TimeoutError("The proxy may already have submitted this group message")
+    monkeypatch.setattr(t, "imessage_group", ambiguous_send)
+    plan = d.prepare(GROUP_CFG, "Uncertain group", "BB-CC")
+    key, _ = await m.reserve(plan)
+    result = await m.execute(key, plan)
+    assert [c[0] for c in t.calls] == ["imessage_group"]
+    assert result["results"][0]["state"] == "unknown"
+    assert "fallback_reason" not in result["results"][0]

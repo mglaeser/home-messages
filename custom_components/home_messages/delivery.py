@@ -69,16 +69,19 @@ def prepare(settings, text, initials):
         phones = [mapping[a] for a in aliases]
         if any(not isinstance(p, str) or not PHONE.fullmatch(p) for p in phones):
             raise RequestError("recipient configuration contains an invalid phone number")
-        if len(aliases) == 1:
-            bucket = singles.setdefault(phones[0], [])
-            if aliases[0] not in bucket:
-                bucket.append(aliases[0])
+        group_key = "-".join(sorted(aliases))
+        if len(aliases) == 1 or group_key not in groups:
+            # An unbound group uses the exact individual route, including alias
+            # order and phone deduplication, before request fingerprints exist.
+            for alias, phone in zip(aliases, phones):
+                bucket = singles.setdefault(phone, [])
+                if alias not in bucket:
+                    bucket.append(alias)
             continue
         if len(phones) != len(set(phones)):
             raise RequestError("group members must have distinct phone numbers")
         aliases.sort()
-        group_key = "-".join(aliases)
-        chat_id = groups.get(group_key)
+        chat_id = groups[group_key]
         if type(chat_id) is not int or not 0 < chat_id <= 2**63 - 1:
             raise GroupNotConfigured(group_key)
         group_targets[group_key] = {"chat_id": chat_id, "initials": aliases, "phones": sorted(phones)}

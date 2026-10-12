@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.2.0
+
+- Send selected group members individually when their alias combination has no
+  configured chat ID. Hyphen syntax then uses the same routing, phone-number
+  deduplication and request replay behavior as comma-separated recipients.
+- Apply the existing individual iMessage and optional Sipgate fallback rules to
+  these destinations. Configured groups retain their membership checks and never
+  fan out after a verification failure or an uncertain send.
+- Show the effective individual destinations in previews and delivery results;
+  keep malformed configured chat IDs and invalid recipients as validation errors.
+
 ## 1.1.2
 
 - Show rejected pre-dispatch requests in the Last delivery sensor and a persistent

@@ -42,8 +42,14 @@ private credentials. Network behavior belongs behind an injectable transport.
 - Keep the `home_messages` domain and existing config entry identity stable.
 - Preserve old request fingerprints and durable-ledger replay behavior when
   changing routing. Test upgrades as well as fresh configuration.
-- Validate all destinations before sending. Verify group membership before
-  dispatch, and never silently turn a group into individual messages.
+- Resolve and validate the complete destination plan before sending. Only an
+  absent binding for the exact alias set expands a hyphenated selection to the
+  normal individual destinations, with the same deduplication and fingerprints
+  as comma syntax. Test mixed selections and effective preview results.
+- Existing group bindings must remain strict: invalid bindings are errors, and
+  configured groups require membership verification before any dispatch. Never
+  fan out a configured group after metadata/proxy/send errors or an uncertain
+  outcome; these are not reasons to choose individual routing.
 - SMS fallback is allowed only for individual destinations after an explicitly
   recognized pre-submission failure. Unknown outcomes must not trigger a retry.
 - Keep English and German configuration/action descriptions consistent.

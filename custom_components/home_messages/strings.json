@@ -26,11 +26,11 @@
           "proxy_url": "Base URL of the local proxy, including its port. Saving this form does not test connectivity or send a message.",
           "proxy_api_key": "Required at setup. When editing, leave blank to keep the saved key. Saved keys are never shown.",
           "recipients": "One ALIAS=+COUNTRYCODEPHONENUMBER mapping per line. Use an international phone number without spaces. Aliases are case insensitive and must be unique. Hyphens are reserved for groups.",
-          "sipgate_enabled": "SMS fallback applies only to individual sends after a definite iMessage failure. Uncertain results and groups never trigger automatic SMS.",
+          "sipgate_enabled": "SMS fallback applies to single targets, including selections without a group binding, after a definite pre-send failure. Uncertain outcomes and configured group sends never trigger SMS.",
           "sipgate_token_id": "Required when SMS fallback is enabled. Leave blank when editing to keep the saved value.",
           "sipgate_token_secret": "Required when SMS fallback is enabled. Leave blank when editing to keep the saved value.",
           "sipgate_sms_id": "The SMS extension identifier from Sipgate, for example s0; this is not the recipient's phone number.",
-          "groups": "Optional, for example BB-CC=chat_id:42. Use existing iMessage groups with exactly these recipients; alias order does not matter. The chat ID must be allowed by the proxy. This does not create chats. Leave empty for individual sends only."
+          "groups": "Optional, for example BB-CC=chat_id:42. Use an existing proxy-allowed chat with exactly these members. Without a matching binding, members are sent individually. No chats are created."
         }
       }
     },
@@ -58,7 +58,7 @@
     "step": {
       "init": {
         "title": "Configure Home Messages",
-        "description": "Blank password fields keep their saved values. Changes apply after saving; the webhook address stays the same.\n\nLocal webhook URL (keep private):\n`{webhook_url}`\n\nPOST form fields: `text` and `initials`. `BB,CC` sends individually; `BB-CC` sends to one group. `BB-CC,AA` sends to one group and individually to AA; `BB-CC-AA` sends to a group of three.",
+        "description": "Blank password fields keep their saved values. Changes apply after saving; the webhook address stays the same.\n\nLocal webhook URL (keep private):\n`{webhook_url}`\n\nPOST form fields: `text` and `initials`. `BB,CC` sends individually. `BB-CC` uses its configured group; without a matching binding, it sends individually like `BB,CC`. Combine targets with commas.",
         "data": {
           "proxy_url": "iMessage proxy URL",
           "proxy_api_key": "iMessage proxy API key",
@@ -73,11 +73,11 @@
           "proxy_url": "Base URL of the local proxy, including its port. Saving this form does not test connectivity or send a message.",
           "proxy_api_key": "Required at setup. When editing, leave blank to keep the saved key. Saved keys are never shown.",
           "recipients": "One ALIAS=+COUNTRYCODEPHONENUMBER mapping per line. Use an international phone number without spaces. Aliases are case insensitive and must be unique. Hyphens are reserved for groups.",
-          "sipgate_enabled": "SMS fallback applies only to individual sends after a definite iMessage failure. Uncertain results and groups never trigger automatic SMS.",
+          "sipgate_enabled": "SMS fallback applies to single targets, including selections without a group binding, after a definite pre-send failure. Uncertain outcomes and configured group sends never trigger SMS.",
           "sipgate_token_id": "Required when SMS fallback is enabled. Leave blank when editing to keep the saved value.",
           "sipgate_token_secret": "Required when SMS fallback is enabled. Leave blank when editing to keep the saved value.",
           "sipgate_sms_id": "The SMS extension identifier from Sipgate, for example s0; this is not the recipient's phone number.",
-          "groups": "Optional, for example BB-CC=chat_id:42. Use existing iMessage groups with exactly these recipients; alias order does not matter. The chat ID must be allowed by the proxy. This does not create chats. Leave empty for individual sends only."
+          "groups": "Optional, for example BB-CC=chat_id:42. Use an existing proxy-allowed chat with exactly these members. Without a matching binding, members are sent individually. No chats are created."
         }
       }
     },
@@ -100,11 +100,11 @@
   "services": {
     "send": {
       "name": "Send message",
-      "description": "Send individual targets via iMessage first, with optional Sipgate SMS fallback after a definite failure. Groups use iMessage only.",
+      "description": "Individual targets use iMessage with optional SMS fallback after a definite pre-send failure. Configured groups use iMessage only.",
       "fields": {
         "dry_run": {
           "name": "Validate only",
-          "description": "Validate the message and configured recipient/group mappings locally without sending. This does not check chat membership or proxy permissions."
+          "description": "Validate and preview effective destinations without sending. Missing group bindings appear as individual targets. No live membership or proxy permission checks."
         },
         "text": {
           "name": "Message",
@@ -112,7 +112,7 @@
         },
         "initials": {
           "name": "Recipients",
-          "description": "Commas separate targets; hyphens join a configured group: BB,CC individually; BB-CC as one group; BB-CC,AA as one group plus an individual; BB-CC-AA as a group of three."
+          "description": "Commas separate targets. Hyphens select an exact configured group; without its binding, members are sent individually (BB-CC becomes BB,CC)."
         },
         "request_id": {
           "name": "Request ID",

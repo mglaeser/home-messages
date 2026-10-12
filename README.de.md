@@ -16,8 +16,9 @@ Gerät laufen. Sipgate ist optional und standardmäßig deaktiviert.
 ## Installation
 
 Benötigt werden Home Assistant **2026.9.1 oder neuer**, ein erreichbarer Proxy
-mit kompatibler 1.0-API und ein API-Schlüssel mit `messages:send`. Für Gruppen
-werden zusätzlich `messages:read`, aktivierte Nachrichten-Lesezugriffe und die
+mit kompatibler 1.0-API und ein API-Schlüssel mit `messages:send`. Für den Versand
+an konfigurierte Gruppen werden zusätzlich `messages:read`, aktivierte
+Nachrichten-Lesezugriffe und die
 entsprechenden macOS-Berechtigungen benötigt. Ziele müssen im Proxy
 freigegeben sein. Nutze ein vertrauenswürdiges Netz oder einen passend
 eingerichteten HTTPS-Endpunkt.
@@ -58,19 +59,29 @@ Kürzel beginnen mit einem Buchstaben und erlauben Buchstaben, Ziffern und
 Unterstriche, maximal 16 Zeichen. Groß-/Kleinschreibung ist egal; Bindestriche
 sind für Gruppen reserviert.
 
-| `initials` | Versand |
-| --- | --- |
-| `AA,BB` | Zwei einzelne Nachrichten |
-| `AA-BB` | Eine Nachricht an die konfigurierte AA/BB-Gruppe |
-| `AA-BB,CC` | Eine Gruppennachricht und eine einzelne Nachricht an CC |
-| `AA-BB-CC` | Eine Nachricht an die konfigurierte Dreiergruppe |
+Ab **1.2.0** verwendet eine Auswahl mit Bindestrich die hinterlegte Chat-ID für
+genau diese Kürzelkombination. Fehlt die Zuordnung, werden die Empfänger genauso
+einzeln angeschrieben wie bei einer kommagetrennten Auswahl. Diese Entscheidung
+fällt vor dem Versand; sie ist kein Ersatzversand nach einem Gruppenfehler.
 
-`BB-AA` und `AA-BB` sind dieselbe Gruppe. Identische Ziele werden innerhalb
-einer Anfrage zusammengefasst; eine Gruppe plus ein ausdrücklich zusätzlich
-genanntes Mitglied bleiben zwei Ziele. Die Schreibreihenfolge legt keine
-Versandreihenfolge fest.
+| `initials` | Mit passender Gruppenzuordnung | Ohne diese Zuordnung |
+| --- | --- | --- |
+| `AA,BB` | Zwei einzelne Nachrichten | Zwei einzelne Nachrichten |
+| `AA-BB` | Eine Nachricht an die AA/BB-Gruppe | Zwei einzelne Nachrichten wie bei `AA,BB` |
+| `AA-BB,CC` | Eine Gruppennachricht und eine einzelne Nachricht an CC | Drei einzelne Nachrichten |
+| `AA-BB-CC` | Eine Nachricht an die Dreiergruppe | Drei einzelne Nachrichten |
 
-Die Gruppe muss bereits in Nachrichten bestehen. Ihre numerische Chat-ID und
+`BB-AA` und `AA-BB` wählen dieselbe Kürzelkombination. Eine Zuordnung für nur
+einen Teil der Auswahl wird nicht verwendet. Ungültige Kürzel und fehlerhafte
+vorhandene Gruppenzuordnungen bleiben Fehler; sie lösen keinen Einzelversand aus.
+
+Identische tatsächlich verwendete Ziele werden zusammengefasst. Ohne eine
+AA/BB-Gruppenzuordnung sendet `AA-BB,BB` einmal an AA und einmal an BB. Mit dieser
+Zuordnung werden die Gruppe und BB einzeln angeschrieben. Die Schreibreihenfolge
+legt keine Versandreihenfolge fest.
+
+Für den Versand in einen gemeinsamen Chat muss die Gruppe bereits in
+Nachrichten bestehen. Ihre numerische Chat-ID und
 Teilnehmer über die Metadaten-API des Proxys prüfen. Anschließend genau
 `chat_id:ID` im Proxy freigeben und die Zuordnung in HA eintragen:
 
@@ -83,12 +94,15 @@ IDs sind Beispiele und gelten nur für die jeweilige Nachrichten-Datenbank.
 `AA-BB=42` ist ebenfalls gültig. Freigegebene Telefonnummern erlauben nicht
 automatisch den Gruppenversand.
 
-Vor dem Versand einer neuen Anfrage mit Gruppen werden deren Metadaten geprüft:
-Chat-ID, iMessage, Gruppenstatus und exakt die konfigurierten Telefonnummern.
-Zusätzliche oder fehlende Mitglieder, E-Mail-Identitäten und nicht lesbare
-Metadaten verhindern den gesamten Auftrag vor dem Versand. Diese Prüfung
-sperrt spätere Mitgliedschaftsänderungen in Nachrichten nicht. Gruppen werden
-bei Fehlern niemals in Einzelnachrichten oder SMS aufgeteilt.
+Vor dem Versand einer neuen Anfrage mit konfigurierten Gruppenzielen werden
+deren Metadaten geprüft: Chat-ID, iMessage, Gruppenstatus und exakt die
+konfigurierten Telefonnummern. Zusätzliche oder fehlende Mitglieder,
+E-Mail-Identitäten und nicht lesbare Metadaten verhindern den gesamten Auftrag
+vor dem Versand. Diese Prüfung sperrt spätere Mitgliedschaftsänderungen in
+Nachrichten nicht. Konfigurierte Gruppenziele werden bei Metadaten-, Proxy-
+oder Versandfehlern sowie unklarem Versandstatus niemals in Einzelnachrichten
+oder SMS aufgeteilt. Ohne Gruppenzuordnung ist keine Chat-Metadatenabfrage nötig;
+es gelten der normale Einzelversand und dessen Freigaben.
 
 ## Aktionen und REST
 
@@ -104,9 +118,11 @@ data:
 response_variable: delivery
 ```
 
-`dry_run: true` prüft Text und gespeicherte Zielzuordnungen. Es prüft keine
-Verbindung, aktuellen Gruppenmitglieder oder Proxy-Freigaben. Für einen echten
-Versand `dry_run` weglassen oder auf `false` setzen.
+`dry_run: true` prüft Text und gespeicherte Zielzuordnungen und zeigt die
+tatsächlich verwendeten Ziele. Ohne AA/BB-Gruppenzuordnung liefert das Beispiel
+`AA-BB` zwei Ergebnisse mit `target_type: single`, für `AA` und `BB`. Die Vorschau
+prüft keine Verbindung, aktuellen Gruppenmitglieder oder Proxy-Freigaben. Für
+einen echten Versand `dry_run` weglassen oder auf `false` setzen.
 
 `text` erlaubt 1–4.000 Zeichen, keinen führenden Bindestrich und keine
 unzulässigen Steuerzeichen. `initials` erlaubt maximal 256 Zeichen.
@@ -135,18 +151,21 @@ Auftrag, und Fehler erzeugen eine HA-Benachrichtigung.
 Ab 1.1.2 werden auch vor dem Versand abgewiesene echte Anfragen im Sensor als
 `failed` und als persistente HA-Benachrichtigung sichtbar. Die Attribute enthalten
 `phase: preflight`, einen sicheren Fehlercode/-text und ein ausdrücklich
-abgewiesenes Ergebnis. Eine fehlende Gruppenzuordnung nennt die geprüften Kürzel
-und erklärt den nötigen Eintrag einer bestehenden Chat-ID. Die Aktion meldet
-weiterhin einen Fehler; der Webhook antwortet weiterhin mit HTTP 400 bzw. 409.
+abgewiesenes Ergebnis. Ab 1.2.0 ist eine fehlende Gruppenzuordnung kein Fehler;
+sie führt zu Einzelzielen. Fehlerhafte vorhandene Zuordnungen und ungültige
+Kürzel werden weiterhin abgewiesen. Bei Validierungsfehlern meldet die Aktion
+einen Fehler; der Webhook antwortet mit HTTP 400 bzw. 409.
 Solche Ablehnungen reservieren keine Anfrage-ID und ändern das Journal nicht;
 sie werden nach einem Neustart nicht daraus wiederhergestellt. Fehlgeschlagene
 Vorschauen verändern weder Status noch Benachrichtigungen.
 
 Nur bei Einzelzielen kann ein eindeutiger Fehler vor der iMessage-Übergabe einen
 Sipgate-Versuch auslösen, sofern aktiviert. Berechtigungsfehler und unklare
-Ergebnisse führen nicht automatisch zu SMS. Gruppen verwenden ausschließlich
-iMessage. Ein Fehler bei einem späteren Ziel macht einen vorherigen Versand
-nicht rückgängig.
+Ergebnisse führen nicht automatisch zu SMS. Diese Regeln gelten ebenso für
+Einzelziele aus einer Auswahl ohne Gruppenzuordnung. Konfigurierte Gruppen
+verwenden ausschließlich iMessage und wechseln bei Fehlern nicht zum
+Einzelversand. Ein Fehler bei einem späteren Ziel macht einen vorherigen
+Versand nicht rückgängig.
 
 Ein dauerhaft gespeichertes Journal verhindert erneuten Versand derselben
 gespeicherten ID mit identischem Inhalt. Es umfasst höchstens 1.000 Aufträge;

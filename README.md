@@ -34,9 +34,10 @@ Messages does not override it.
 - Home Assistant **2026.9.1 or newer**.
 - A reachable iMessage Proxy compatible with its 1.0 API, installed using its
   [own instructions](https://github.com/mglaeser/imessage-proxy#get-started).
-- A proxy API key with `messages:send`; groups also require `messages:read`.
+- A proxy API key with `messages:send`; configured group sends also require
+  `messages:read`.
 - Intended destinations in the proxy's allowlist.
-- For groups: Messages reads enabled and the required macOS permissions granted
+- For configured group sends: Messages reads enabled and the required macOS permissions granted
   according to the proxy's documentation.
 - For optional SMS: a Sipgate account supporting its SMS API, a personal access
   token and an SMS extension ID. SMS may incur charges.
@@ -72,7 +73,7 @@ connectivity or send a message.
 | Proxy URL | Reachable base URL, for example `http://imessage-proxy.local:8765` |
 | Proxy API key | Dedicated send key; add read scope for group verification |
 | Recipients | One `ALIAS=+internationalnumber` per line |
-| Groups | Optional: one `ALIAS-ALIAS=chat_id:ID` per line |
+| Groups | Optional existing chat bindings: one `ALIAS-ALIAS=chat_id:ID` per line |
 | Sipgate fallback | Off by default; applies only to individual destinations |
 | Sipgate credentials | Token ID, token secret, and SMS extension ID, when enabled |
 
@@ -91,18 +92,28 @@ be part of an individual alias.
 
 ### Individual and group destinations
 
-| `initials` | Result |
-| --- | --- |
-| `AA,BB` | Two individual messages |
-| `AA-BB` | One message to the configured AA/BB group |
-| `AA-BB,CC` | One group message and one individual message to CC |
-| `AA-BB-CC` | One message to the configured three-recipient group |
+From **1.2.0**, a hyphenated selection uses the binding for that exact set of
+aliases when one is configured. Without that binding, it resolves to individual
+destinations exactly like comma-separated aliases. This choice is made before
+sending; it is not recovery from a failed group send.
 
-`BB-AA` and `AA-BB` identify the same group. Repeated identical destinations are
-deduplicated; explicitly selecting a group and one of its members still means
-two destinations. Comma order is not a delivery-order guarantee.
+| `initials` | With a matching group binding | Without that binding |
+| --- | --- | --- |
+| `AA,BB` | Two individual messages | Two individual messages |
+| `AA-BB` | One message to the AA/BB group | Two individual messages, like `AA,BB` |
+| `AA-BB,CC` | One group message and one individual message to CC | Three individual messages |
+| `AA-BB-CC` | One message to the three-recipient group | Three individual messages |
 
-Create or find the desired conversation in Messages first. Use the proxy's
+`BB-AA` and `AA-BB` select the same alias set. A binding for only part of a
+selection is not used. Invalid aliases or an invalid existing binding remain
+errors; they do not enable individual routing.
+
+Repeated effective destinations are deduplicated. Without an AA/BB binding,
+`AA-BB,BB` sends once to AA and once to BB. With that binding, it selects the
+group and BB individually. Comma order is not a delivery-order guarantee.
+
+To send into a shared chat, create or find the conversation in Messages first.
+Use the proxy's
 chat metadata API to identify its numeric chat ID and confirm its participants.
 Then authorize that exact `chat_id:ID` in the proxy and configure, for example:
 
@@ -114,13 +125,15 @@ AA-BB-CC=chat_id:43
 The short form `AA-BB=42` also works. These IDs are examples, local to the proxy's
 Messages database. Phone-number allowlisting alone does not authorize a group.
 
-Before dispatching any destination in a new request containing groups, Home
-Messages reads each chat's metadata and verifies its ID, iMessage service,
-group status, and exact set of configured phone numbers. Missing members,
-additional members, email-based participants, or unreadable metadata reject
-the whole request before sending. This is a check at dispatch time, not an
-atomic lock on membership in Messages. Groups never fan out into separate
-iMessages or SMS as a fallback.
+Before dispatching any destination in a new request containing configured group
+targets, Home Messages reads each chat's metadata and verifies its ID, iMessage
+service, group status, and exact set of configured phone numbers. Missing
+members, additional members, email-based participants, or unreadable metadata
+reject the whole request before sending. This is a check at dispatch time, not
+an atomic lock on membership in Messages. Configured group targets never fan
+out into separate iMessages or SMS after a metadata, proxy, or send failure,
+or an uncertain outcome. A selection without a binding needs no chat-metadata
+lookup; its members use the normal individual-send path and permissions.
 
 ## Home Assistant actions
 
@@ -137,8 +150,10 @@ response_variable: delivery
 ```
 
 Remove `dry_run` or set it to `false` when you intend to send. A preview checks
-text, aliases and configured group mappings locally; it does not contact the
-proxy, verify live chat membership, or prove allowlist permissions.
+text, aliases and configured group mappings locally and shows the effective
+destinations. Without an AA/BB binding, the `AA-BB` example returns two
+`target_type: single` results, for `AA` and `BB`. It does not contact the proxy,
+verify live chat membership, or prove allowlist permissions.
 
 `text` must contain 1–4,000 characters and cannot start with `-` or contain
 unsupported control characters. `initials` is limited to 256 characters.
@@ -194,16 +209,19 @@ From 1.1.2, a real request rejected during local validation also updates the
 sensor to `failed` and creates a persistent HA notification. Its attributes
 contain `phase: preflight`, a safe `error` code/message and an explicit rejected
 result. Request-wide errors omit `target_type` when no destination was validated.
-A missing group identifies its validated aliases and explains how to configure
-an existing chat ID. The action still raises its validation error; webhook
-validation/conflict responses remain HTTP 400/409. These status updates do not
+From 1.2.0, an absent group binding selects individual destinations and is not
+a validation error. Invalid existing bindings and invalid aliases still fail.
+The action raises validation errors; webhook validation/conflict responses
+remain HTTP 400/409. These status updates do not
 reserve request IDs or change the durable ledger, and are not restored from it
 after restart. Failed previews leave status and notifications unchanged.
 
 For individual destinations, enabled Sipgate fallback is attempted once after
 a connection failure before submission or a recognized proxy pre-send failure.
 Authentication/allowlist rejection and uncertain outcomes do not trigger SMS.
-Group sends use only iMessage. Mixed requests are not transactional: a later
+These same individual-send rules apply to members of a selection without a
+group binding. Configured group sends use only iMessage and never switch to
+individual sends after an error. Mixed requests are not transactional: a later
 transport failure does not undo earlier accepted destinations.
 
 The private HA ledger is persisted and checked before dispatch. It holds at
