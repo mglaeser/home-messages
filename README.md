@@ -190,6 +190,16 @@ details. `complete: true` means processing ended, not that every result succeede
 Check each result's `state`. The Last delivery sensor summarizes the latest
 request as `idle`, `pending`, `accepted`, `failed` or `unknown`.
 
+From 1.1.2, a real request rejected during local validation also updates the
+sensor to `failed` and creates a persistent HA notification. Its attributes
+contain `phase: preflight`, a safe `error` code/message and an explicit rejected
+result. Request-wide errors omit `target_type` when no destination was validated.
+A missing group identifies its validated aliases and explains how to configure
+an existing chat ID. The action still raises its validation error; webhook
+validation/conflict responses remain HTTP 400/409. These status updates do not
+reserve request IDs or change the durable ledger, and are not restored from it
+after restart. Failed previews leave status and notifications unchanged.
+
 For individual destinations, enabled Sipgate fallback is attempted once after
 a connection failure before submission or a recognized proxy pre-send failure.
 Authentication/allowlist rejection and uncertain outcomes do not trigger SMS.

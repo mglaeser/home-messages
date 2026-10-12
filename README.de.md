@@ -132,6 +132,16 @@ Auch `state: accepted` bestätigt nur die Annahme durch den Transport.
 Ergebnis muss geprüft werden. Der Sensor **Letzter Versand** zeigt den jüngsten
 Auftrag, und Fehler erzeugen eine HA-Benachrichtigung.
 
+Ab 1.1.2 werden auch vor dem Versand abgewiesene echte Anfragen im Sensor als
+`failed` und als persistente HA-Benachrichtigung sichtbar. Die Attribute enthalten
+`phase: preflight`, einen sicheren Fehlercode/-text und ein ausdrücklich
+abgewiesenes Ergebnis. Eine fehlende Gruppenzuordnung nennt die geprüften Kürzel
+und erklärt den nötigen Eintrag einer bestehenden Chat-ID. Die Aktion meldet
+weiterhin einen Fehler; der Webhook antwortet weiterhin mit HTTP 400 bzw. 409.
+Solche Ablehnungen reservieren keine Anfrage-ID und ändern das Journal nicht;
+sie werden nach einem Neustart nicht daraus wiederhergestellt. Fehlgeschlagene
+Vorschauen verändern weder Status noch Benachrichtigungen.
+
 Nur bei Einzelzielen kann ein eindeutiger Fehler vor der iMessage-Übergabe einen
 Sipgate-Versuch auslösen, sofern aktiviert. Berechtigungsfehler und unklare
 Ergebnisse führen nicht automatisch zu SMS. Gruppen verwenden ausschließlich

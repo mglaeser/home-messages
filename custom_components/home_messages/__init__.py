@@ -20,7 +20,7 @@ from homeassistant.helpers.storage import Store
 
 from ._schema import schema as vol
 from .const import DOMAIN
-from .delivery import DeliveryManager, RequestConflict, RequestError, Transport, dry_run_result, prepare
+from .delivery import DeliveryManager, GroupNotConfigured, RequestConflict, RequestError, Transport, dry_run_result, prepare
 
 _LOGGER = logging.getLogger(__name__)
 SIGNAL = DOMAIN + "_delivery"
@@ -38,6 +38,23 @@ class Runtime:
     @property
     def settings(self):
         return {**self.entry.data, **self.entry.options}
+
+
+async def async_report_preflight_rejection(rt: Runtime, error: RequestError) -> None:
+    """Expose a rejected attempt without reserving an ID or exposing raw inputs."""
+    code = "request_id_conflict" if isinstance(error, RequestConflict) else "request_validation_failed"
+    result = {"initials": [], "target": "request", "state": "rejected", "reason": code}
+    if isinstance(error, GroupNotConfigured):
+        code = "group_not_configured"
+        result.update(initials=error.group.split("-"), target_type="group",
+                      target=error.group, reason=code)
+    # An explicit rejected result prevents callers from treating an empty list
+    # as all accepted. This is status only, never an idempotency-ledger record.
+    await rt.manager.notify({
+        "complete": True, "phase": "preflight",
+        "error": {"code": code, "message": str(error)},
+        "results": [result],
+    })
 
 
 async def async_setup(hass: HomeAssistant, config: dict) -> bool:
@@ -60,6 +77,8 @@ async def async_setup(hass: HomeAssistant, config: dict) -> bool:
                 return await rt.manager.execute(key, plan)
             return rt.manager.result(key)
         except RequestError as err:
+            if not call.data.get("dry_run", False):
+                await async_report_preflight_rejection(rt, err)
             raise HomeAssistantError(str(err)) from err
         finally:
             rt.active -= 1
@@ -118,6 +137,11 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     async def changed(result):
         rt.last = result
         async_dispatcher_send(hass, SIGNAL)
+        if result.get("phase") == "preflight":
+            persistent_notification.async_create(hass,
+                "Request rejected before dispatch: " + result["error"]["message"],
+                title="Check message delivery", notification_id=DOMAIN + "_delivery")
+            return
         failures = [r for r in result["results"] if r["state"] != "accepted"]
         if result.get("complete") and failures:
             summary = "; ".join(r["target"] + ": " + r["state"] + " (" + r.get("reason", "unconfirmed") + ")" for r in failures)
@@ -143,6 +167,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         if rt.closing:
             return web.json_response({"error": "integration is unloading"}, status=503)
         rt.active += 1
+        is_preview = False
         try:
             if request.content_length and request.content_length > 65536:
                 return web.json_response({"error": "request too large"}, status=413)
@@ -157,11 +182,12 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                 return web.json_response({"error": "use form data or JSON"}, status=415)
             if not isinstance(data, dict) or set(data) - {"text", "initials", "request_id", "dry_run"}:
                 raise RequestError("unsupported request fields")
-            plan = prepare(rt.settings, data.get("text"), data.get("initials"))
             dry_run = data.get("dry_run", False)
             if dry_run not in (False, True, "true", "false"):
                 raise RequestError("dry_run must be true or false")
-            if dry_run in (True, "true"):
+            is_preview = dry_run in (True, "true")
+            plan = prepare(rt.settings, data.get("text"), data.get("initials"))
+            if is_preview:
                 return web.json_response(dry_run_result(plan))
             key, fresh = await rt.manager.reserve(plan, data.get("request_id"))
             if fresh:
@@ -172,8 +198,15 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             result = rt.manager.result(key)
             return web.json_response(result, status=200 if result["complete"] else 202)
         except RequestConflict as err:
+            await async_report_preflight_rejection(rt, err)
             return web.json_response({"error": str(err)}, status=409)
-        except (RequestError, ValueError):
+        except RequestError as err:
+            if not is_preview:
+                await async_report_preflight_rejection(rt, err)
+            return web.json_response({"error": "invalid text, initials, or request ID; nothing sent"}, status=400)
+        except ValueError:
+            # JSON decoder errors may contain the submitted body; do not expose it.
+            await async_report_preflight_rejection(rt, RequestError("invalid JSON payload; no message sent"))
             return web.json_response({"error": "invalid text, initials, or request ID; nothing sent"}, status=400)
         except OSError:
             return web.json_response({"error": "message ledger unavailable; no dispatch started"}, status=503)

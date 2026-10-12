@@ -29,6 +29,18 @@ class RequestConflict(RequestError):
     """An id was reused with different message content or recipients."""
 
 
+class GroupNotConfigured(RequestError):
+    """A validated alias group has no usable binding to an existing chat."""
+
+    def __init__(self, group):
+        self.group = group
+        super().__init__(
+            "requested group has no valid configured chat ID; no message sent. "
+            f"Configure {group}=chat_id:ID in Home Messages using an existing "
+            "Messages group, and allowlist that chat ID in iMessage Proxy."
+        )
+
+
 def prepare(settings, text, initials):
     """Validate all recipients before any transport action; snapshot settings."""
     if not isinstance(text, str) or not text.strip() or len(text) > 4000:
@@ -68,7 +80,7 @@ def prepare(settings, text, initials):
         group_key = "-".join(aliases)
         chat_id = groups.get(group_key)
         if type(chat_id) is not int or not 0 < chat_id <= 2**63 - 1:
-            raise RequestError("requested group has no valid configured chat ID; no message sent")
+            raise GroupNotConfigured(group_key)
         group_targets[group_key] = {"chat_id": chat_id, "initials": aliases, "phones": sorted(phones)}
     if len({t["chat_id"] for t in group_targets.values()}) != len(group_targets):
         raise RequestError("different groups must not share a chat ID")
