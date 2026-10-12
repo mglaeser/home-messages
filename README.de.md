@@ -132,6 +132,16 @@ Auch `state: accepted` bestätigt nur die Annahme durch den Transport.
 Ergebnis muss geprüft werden. Der Sensor **Letzter Versand** zeigt den jüngsten
 Auftrag, und Fehler erzeugen eine HA-Benachrichtigung.
 
+Ab 1.1.2 werden auch vor dem Versand abgewiesene echte Anfragen im Sensor als
+`failed` und als persistente HA-Benachrichtigung sichtbar. Die Attribute enthalten
+`phase: preflight`, einen sicheren Fehlercode/-text und ein ausdrücklich
+abgewiesenes Ergebnis. Eine fehlende Gruppenzuordnung nennt die geprüften Kürzel
+und erklärt den nötigen Eintrag einer bestehenden Chat-ID. Die Aktion meldet
+weiterhin einen Fehler; der Webhook antwortet weiterhin mit HTTP 400 bzw. 409.
+Solche Ablehnungen reservieren keine Anfrage-ID und ändern das Journal nicht;
+sie werden nach einem Neustart nicht daraus wiederhergestellt. Fehlgeschlagene
+Vorschauen verändern weder Status noch Benachrichtigungen.
+
 Nur bei Einzelzielen kann ein eindeutiger Fehler vor der iMessage-Übergabe einen
 Sipgate-Versuch auslösen, sofern aktiviert. Berechtigungsfehler und unklare
 Ergebnisse führen nicht automatisch zu SMS. Gruppen verwenden ausschließlich
@@ -157,6 +167,10 @@ Zielzuordnungen, Proxy-Adresse und Webhook-ID.
 Vor Updates HA sichern, Release-Hinweise lesen und aktive Sendungen beenden
 lassen. Die Domain `home_messages` bleibt unverändert. Alte Einzelkürzel mit
 Bindestrich müssen ausdrücklich umbenannt und ihre Aufrufer angepasst werden.
+
+Ein Entlade- oder Neuladeversuch während einer aktiven Anfrage wird abgelehnt;
+HA setzt den Eintrag dann auf `failed_unload`. Die Anfrage zuerst beenden lassen
+und danach HA neu starten; erneutes Entladen oder Neuladen behebt diesen Zustand nicht.
 
 Zum Entfernen zuerst Aufrufer deaktivieren, aktive Sendungen abwarten, den
 Integrationseintrag löschen, Dateien über HACS oder manuell entfernen und HA
