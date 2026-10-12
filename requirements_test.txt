@@ -1,5 +1,5 @@
 # Lightweight mocked transport/routing/configuration tests; no HA installation.
-aiohttp==3.14.3
+aiohttp==3.14.4
 voluptuous==0.16.0
 pytest==9.1.1
 pytest-asyncio==1.4.0
