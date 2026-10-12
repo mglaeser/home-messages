@@ -158,6 +158,10 @@ Vor Updates HA sichern, Release-Hinweise lesen und aktive Sendungen beenden
 lassen. Die Domain `home_messages` bleibt unverändert. Alte Einzelkürzel mit
 Bindestrich müssen ausdrücklich umbenannt und ihre Aufrufer angepasst werden.
 
+Ein Entlade- oder Neuladeversuch während einer aktiven Anfrage wird abgelehnt;
+HA setzt den Eintrag dann auf `failed_unload`. Die Anfrage zuerst beenden lassen
+und danach HA neu starten; erneutes Entladen oder Neuladen behebt diesen Zustand nicht.
+
 Zum Entfernen zuerst Aufrufer deaktivieren, aktive Sendungen abwarten, den
 Integrationseintrag löschen, Dateien über HACS oder manuell entfernen und HA
 neu starten. Den dedizierten Proxy-Schlüssel bei Nichtgebrauch widerrufen.

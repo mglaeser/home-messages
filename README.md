@@ -228,6 +228,10 @@ method used to install. Wait for active sends to finish before reloading or
 restarting. Existing installations keep the `home_messages` domain and their
 configuration; legacy aliases containing hyphens must be renamed explicitly.
 
+If an unload or reload is attempted during an active request, Home Messages
+refuses it and HA marks the entry `failed_unload`. Let the request finish, then
+restart HA; another unload/reload cannot recover that state.
+
 To remove, disable callers, wait for sends to finish, delete the Home Messages
 entry in **Devices & services**, remove its files using HACS or your manual
 installation method, and restart HA. Revoke the dedicated proxy key if it is no

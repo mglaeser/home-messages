@@ -5,6 +5,7 @@ from pathlib import Path
 
 import pytest
 from homeassistant.components import webhook
+from homeassistant.config_entries import ConfigEntryState, OperationNotAllowed
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers import entity_registry
 from homeassistant.util.aiohttp import MockRequest
@@ -89,12 +90,25 @@ async def test_pending_request_recovers_unknown_without_resubmission(hass, entry
         mock.assert_not_awaited()
 
 
-async def test_active_request_blocks_unload_and_idle_unload_unregisters_webhook(hass, entry):
+async def test_active_request_refuses_unload_and_requires_restart(hass, entry):
     await setup_entry(hass, entry)
-    entry.runtime_data.active = 1
+    runtime = entry.runtime_data
+    runtime.active = 1
     assert not await hass.config_entries.async_unload(entry.entry_id)
-    entry.runtime_data.active = 0
+    assert entry.state is ConfigEntryState.FAILED_UNLOAD
+    assert entry.runtime_data is runtime
+    assert not runtime.closing
+    # HA treats a failed unload as non-recoverable. Finishing the request does
+    # not make this entry reloadable; do not reset its state artificially.
+    runtime.active = 0
+    with pytest.raises(OperationNotAllowed):
+        await hass.config_entries.async_unload(entry.entry_id)
+
+
+async def test_idle_unload_unregisters_webhook_and_service_runtime(hass, entry):
+    await setup_entry(hass, entry)
     assert await hass.config_entries.async_unload(entry.entry_id)
+    assert entry.state is ConfigEntryState.NOT_LOADED
     response = await webhook.async_handle_webhook(
         hass, entry.data["webhook_id"], request({"text": "Preview", "initials": "AA", "dry_run": True})
     )
