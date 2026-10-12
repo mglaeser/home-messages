@@ -3,6 +3,7 @@
 from copy import deepcopy
 import json
 from unittest.mock import patch
+from urllib.parse import urlencode
 
 import pytest
 from homeassistant.components import webhook
@@ -13,11 +14,12 @@ from homeassistant.util.aiohttp import MockRequest
 from custom_components.home_messages.const import DOMAIN
 
 
-def request(data):
-    body = json.dumps(data).encode()
+def request(data, *, form=False):
+    content_type = "application/x-www-form-urlencoded" if form else "application/json"
+    body = (urlencode(data) if form else json.dumps(data)).encode()
     result = MockRequest(body, "home_messages/tests", method="POST", remote="127.0.0.1",
-                         headers={"Content-Type": "application/json"})
-    result.content_type = "application/json"
+                         headers={"Content-Type": content_type})
+    result.content_type = content_type
     result.content_length = len(body)
     return result
 
@@ -159,3 +161,62 @@ async def test_conflicting_request_reports_rejection_without_changing_original(h
     transports["imessage"].assert_awaited_once()
     transports["group_metadata"].assert_not_awaited()
     transports["sms"].assert_not_awaited()
+
+
+@pytest.mark.parametrize("form", [False, True])
+async def test_webhook_preview_with_unexpected_field_keeps_status_unchanged(hass, entry, transports, form):
+    await setup_entry(hass, entry)
+    data = {"text": "Private body", "initials": "AA", "extra": "untrusted extra value",
+            "dry_run": "true" if form else True}
+    before = deepcopy(entry.runtime_data.last)
+    with patch("homeassistant.components.persistent_notification.async_create") as notification:
+        response = await webhook.async_handle_webhook(
+            hass, entry.data["webhook_id"], request(data, form=form)
+        )
+        await hass.async_block_till_done()
+    assert response.status == 400
+    assert entry.runtime_data.last == before
+    assert sensor_state(hass, entry).state == "idle"
+    notification.assert_not_called()
+    assert not entry.runtime_data.manager.records
+    for mock in transports.values():
+        mock.assert_not_awaited()
+
+
+async def test_form_preview_with_duplicate_other_fields_keeps_status_unchanged(hass, entry, transports):
+    await setup_entry(hass, entry)
+    data = [("text", "Private body"), ("text", "Duplicate private body"),
+            ("initials", "AA"), ("dry_run", "true")]
+    with patch("homeassistant.components.persistent_notification.async_create") as notification:
+        response = await webhook.async_handle_webhook(
+            hass, entry.data["webhook_id"], request(data, form=True)
+        )
+        await hass.async_block_till_done()
+    assert response.status == 400
+    assert sensor_state(hass, entry).state == "idle"
+    assert not entry.runtime_data.last
+    notification.assert_not_called()
+    assert not entry.runtime_data.manager.records
+    for mock in transports.values():
+        mock.assert_not_awaited()
+
+
+async def test_malformed_webhook_json_reports_only_a_safe_error(hass, entry, transports):
+    await setup_entry(hass, entry)
+    body = b'{"text": "Private malformed body",'
+    malformed = MockRequest(body, "home_messages/tests", method="POST", remote="127.0.0.1",
+                            headers={"Content-Type": "application/json"})
+    malformed.content_type = "application/json"
+    malformed.content_length = len(body)
+    with patch("homeassistant.components.persistent_notification.async_create") as notification:
+        response = await webhook.async_handle_webhook(hass, entry.data["webhook_id"], malformed)
+        await hass.async_block_till_done()
+    assert response.status == 400
+    state = sensor_state(hass, entry)
+    assert state.state == "failed"
+    assert state.attributes["error"]["message"] == "invalid JSON payload; no message sent"
+    exposed = json.dumps(dict(state.attributes)) + notification.call_args.args[1] + response.text
+    assert "Private malformed body" not in exposed
+    assert not entry.runtime_data.manager.records
+    for mock in transports.values():
+        mock.assert_not_awaited()
