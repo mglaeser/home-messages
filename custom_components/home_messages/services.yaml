@@ -1,6 +1,6 @@
 send:
   name: Send message
-  description: Send individual targets via iMessage first, with optional Sipgate SMS fallback after a definite failure. Groups use iMessage only.
+  description: Individual targets use iMessage with optional SMS fallback after a definite pre-send failure. Configured groups use iMessage only.
   fields:
     text:
       name: Message
@@ -12,7 +12,7 @@ send:
           multiline: true
     initials:
       name: Recipients
-      description: Commas separate targets; hyphens join a configured group. BB,CC sends individually; BB-CC sends to one group; BB-CC,AA sends to one group and individually to AA; BB-CC-AA sends to a group of three.
+      description: Commas separate targets. Hyphens select an exact configured group; without its binding, members are sent individually (BB-CC becomes BB,CC).
       required: true
       example: BB-CC,AA
       selector:
@@ -26,7 +26,7 @@ send:
         text:
     dry_run:
       name: Validate only
-      description: Validate the message and configured recipient/group mappings locally without sending. This does not check chat membership or proxy permissions.
+      description: Validate and preview effective destinations without sending. Missing group bindings appear as individual targets. No live membership or proxy permission checks.
       required: false
       default: false
       selector:
