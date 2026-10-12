@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.1.2
+
+- Show rejected pre-dispatch requests in the Last delivery sensor and a persistent
+  HA notification, including an actionable missing-group configuration error.
+- Keep previews free of status changes and notifications. Local rejections do not
+  reserve a request ID, alter retained outcomes, or trigger any transport.
+
 ## 1.1.1 — Initial public release
 
 - Publish Home Messages as a standalone Home Assistant custom integration with

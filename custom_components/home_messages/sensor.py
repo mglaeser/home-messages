@@ -30,6 +30,8 @@ class DeliverySensor(SensorEntity):
         last = self.entry.runtime_data.last
         if not last:
             return "idle"
+        if last.get("phase") == "preflight" and last.get("error"):
+            return "failed"
         if not last.get("complete"):
             return "pending"
         states = {r["state"] for r in last["results"]}
